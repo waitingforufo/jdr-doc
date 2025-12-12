@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<header>
+    <title>盒子旋转</title>
+    <style>
+
+        .box1{
+            width: 800px;
+            height: 800px;
+            background-color: silver;
+        }
+
+        .box1 div{
+            width: 100px;
+            height: 100px;
+        }
+
+        .box2{
+            background-color: #bfa;
+
+            /*
+            设置box2的动画
+            animation-name：设置当前元素生效的关键帧的名字
+            */
+            animation-name: test;
+            
+            animation-duration: 4s;
+
+            /*动画延时 （过多长时间之后才开始）*/
+            /* animation-delay: 2s; */
+
+            /**/
+            /* animation-timing-function: ; */
+            /* animation-timing-function: ease-in-out; */
+
+            /*动画执行的次数
+                可选值：   次数， infinite：无限执行
+            */
+            /* animation-iteration-count: 2; */
+            animation-iteration-count: 2;
+
+            /* animation-direction: normal; 
+                执行动画运行的方向
+                  normal    默认值 from->to
+                  reverse   反向   to->from
+                  alternate from->to 重复执行时是反向执行（to->from)
+                  alternate-reverse  to->from 重复执行时反向执行(from->to)
+            */
+            animation-direction: alternate;
+
+            /* animation-play-state: running; */
+            animation-play-state: running;
+
+            /* animation-fill-mode: none; 
+                动画的填充模式
+                  none    动画执行完毕元素回到原来位置
+                  forwards 动画执行完毕元素会停止在动画结束的位置
+            */
+            animation-fill-mode: forwards;
+        }
+
+        .box1:hover div{
+            animation-play-state: paused;
+        }
+
+
+        /*
+        动画
+          动画和过渡类似，都是可以实现一些动态效果
+            不同点：
+              过渡 - 需要在某个属性发生变化时才会触发
+              动画 - 可以自动触发动态效果
+
+          设置动画效果，必须先要设置一个关键帧，关键帧设置了动画执行的每一个步骤
+        */
+        @keyframes test{
+            /*动画开始位置 也可以用0%表示*/
+            from{
+                margin-left: 0px;
+            }
+
+            /*动画结束位置 也可以用100%表示*/
+            to{
+                margin-left: 700px;
+            }
+        }
+    </style>
+</header>
+
+<body>
+
+    <div class="box1">
+        <div class="box2"></div>
+    </div>
+</body>
+</html>

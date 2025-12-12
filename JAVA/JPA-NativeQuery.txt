@@ -1,0 +1,265 @@
+＊JPA Native query 使い方
+------------------------------------------------------------------------------------
+@Entity
+@Table(name = "apply_hd_src_dtl")     //tbl名はダミー
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+public class ApplyHdSrcDtlForDashBoard implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @Column(name = "apply_id")    //sql文と一致すること
+    private String applyId;
+
+    @Column(name = "project_num")
+    private String projectNum;
+
+    @Column(name = "project_nm")
+    private String projectNm;
+
+    @Column(name = "vend_nm")
+    private String vendNm;
+
+    @Column(name = "apply_sts")
+    private String applySts;
+
+//    @Column(name = "file_sts")
+//    private String fileSts;
+
+    @Column(name = "dtl_kosin_datetime")
+    private String dtlKosinDatetime;
+
+    @Column(name = "display_order")
+    private Integer displayOrder;
+}
+------------------------------------------------------------------------------------
+//SQL文
+
+/**
+	 * 上段左データ取得用SQLを取得.
+	 *
+	 * @return
+	 */
+	private String getSqlForSrcManage() {
+		StringBuilder sql = new StringBuilder();
+		sql.append("  select                                              ");
+		sql.append("       ahsd.dtl_kosin_datetime,                       ");
+		sql.append("       ahsd.apply_id,                                 ");
+		sql.append("       ahsd.apply_sts,                                ");
+		sql.append("       ahsd.vend_nm,                                  ");
+		sql.append("       ahsd.project_num,                              ");
+		sql.append("       ahsd.project_nm,                               ");
+		sql.append("       ccm.display_order                              ");
+		sql.append("  from                                                ");
+		sql.append("      apply_hd_src_dtl ahsd                           ");
+		sql.append("  inner join                                          ");
+		sql.append("      common_code_mst ccm                             ");
+		sql.append("  on                                                  ");
+		sql.append("      ahsd.apply_sts = ccm.condition_cd               ");
+		sql.append("  where                                               ");
+		sql.append("     ccm.item_id = :itemId                            ");
+		sql.append("     and (                                            ");
+		sql.append("        ahsd.apply_sts in (:fileStsList)              ");
+		sql.append("        or (                                          ");
+		sql.append("            ahsd.apply_proc_cncl_flg = '1'            ");
+		sql.append("            and ahsd.apply_proc_cmpl_flg = '0'        ");
+		sql.append("            and ahsd.apply_sts in (:cnclApplyStsList) ");
+		sql.append("        )                                             ");
+		sql.append("     )                                                ");
+		sql.append("  union all                                           ");
+		sql.append("  select                                              ");
+		sql.append("       ahsd.dtl_kosin_datetime,                       ");
+		sql.append("       ahsd.apply_id,                                 ");
+		sql.append("       ahsd.apply_sts,                                ");
+		sql.append("       ahsd.vend_nm,                                  ");
+		sql.append("       ahsd.project_num,                              ");
+		sql.append("       ahsd.project_nm,                               ");
+		sql.append("       ccm.display_order                              ");
+		sql.append("  from                                                ");
+		sql.append("      apply_hd_src_dtl_branch ahsd                    ");
+		sql.append("  inner join                                          ");
+		sql.append("      common_code_mst ccm                             ");
+		sql.append("  on                                                  ");
+		sql.append("      ahsd.apply_sts = ccm.condition_cd               ");
+		sql.append("  where                                               ");
+		sql.append("     ccm.item_id = :itemId                            ");
+		sql.append("     and (                                            ");
+		sql.append("        ahsd.apply_sts in (:fileStsList)              ");
+		sql.append("        or (                                          ");
+		sql.append("            ahsd.apply_proc_cncl_flg = '1'            ");
+		sql.append("            and ahsd.apply_proc_cmpl_flg = '0'        ");
+		sql.append("            and ahsd.apply_sts in (:cnclApplyStsList) ");
+		sql.append("        )                                             ");
+		sql.append("        or (                                          ");
+		sql.append("            ahsd.file_sts = :fileStsCiCncl            ");
+		sql.append("            and exists (                              ");
+		sql.append("                select                                ");
+		sql.append("                    *                                 ");
+		sql.append("                from                                  ");
+		sql.append("                    apply_hd ah                       ");
+		sql.append("                where                                 ");
+		sql.append("                    ah.apply_id = ahsd.apply_id       ");
+		sql.append("                    and ah.apply_sts = :applyStsCiComplete");
+		sql.append("            )                                         ");
+		sql.append("        )                                             ");
+		sql.append("     )                                                ");
+		sql.append("      order by                                        ");
+		sql.append("          display_order                               ");
+		sql.append("          , dtl_kosin_datetime desc                   ");
+		return sql.toString();
+	}
+------------------------------------------------------------------------------------
+
+	@Autowired
+	EntityManager entityManager;
+
+javax.persistence.Query
+
+
+// sql文実行、結果を指定クラスにマッピング --------------------------------------------------------
+/**
+	 * 上段左データを取得.
+	 *
+	 * @param fileStsList
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private List<ApplyHdSrcDtlForDashBoard> getApplyHdSrcDtl() {
+
+		String sql = getSqlForSrcManage();
+
+		Query query = entityManager.createNativeQuery(sql, ApplyHdSrcDtlForDashBoard.class);
+
+		query.setParameter("itemId", ITEM_ID.APPLY_STS.code);
+		query.setParameter("fileStsList", SRC_APPLY_STS_LIST);
+		query.setParameter("cnclApplyStsList", CNCL_APPLY_STS_LIST);
+        query.setParameter("fileStsCiCncl", FILE_STATUS_CD.CANCEL_COMPLETE.code);
+        query.setParameter("applyStsCiComplete", APPLY_STATUS_CD.CI_COMPLETE.code);
+        
+		List<ApplyHdSrcDtlForDashBoard> list = query.getResultList();
+
+		// 返却用リスト
+		List<ApplyHdSrcDtlForDashBoard> resultList = new ArrayList<>();
+
+		Set<String> resultSet = new HashSet<>();
+
+		for (ApplyHdSrcDtlForDashBoard dtl : list) {
+			String applyId = dtl.getApplyId();
+			if (!resultSet.contains(applyId)) {
+				resultList.add(dtl);
+				resultSet.add(applyId);
+			}
+			// 1000件で返却
+			if (resultList.size() == Constants.SEARCH_MAX_RESULT) {
+				break;
+			}
+		}
+
+		return resultList;
+	}
+
+*******************************************************
+＊クラス定義なしの場合
+
+Query query = entityManager.createNativeQuery(sb.toString());
+List<Object> rstLst = query.getResultList();
+
+for(Object obj : rstLst) {
+    ret.add(obj.toString());
+}
+
+＊select結果はObjectでかえってくる
+//查询语句，本地sql 
+String sql = "SELECT telephone, password FROM user where id = 1"; 
+
+//查询 Object result = ssoEntityManager.createNativeQuery(sql) .getSingleResult(); 
+
+//将对象转换为数据 
+Object[] params = (Object[]) result; 
+
+//分别封装各个参数 
+UserDO userDO = new UserDO(); 
+userDO.setTelephone(params[0].toString()); 
+userDO.setPassword(params[1].toString());
+
+
+--------------------------------------------------------------------------
+@Repository
+public interface TelegramDtlRepository extends JpaRepository<TelegramDtl, TelegramDtlKey> {
+
+    List<TelegramDtl> findByTelegramId(String telegramId);
+    
+    @Query(value = "SELECT * FROM telegram_dtl a where a.telegram_id = :telegramId and a.front_channel = 'Web' and a.support_kbn = '○'", nativeQuery = true)
+    List<TelegramDtl> findWebFrontByTelegramId(@Param("telegramId") String telegramId);
+}
+
+
+===============================================================================================
+Entityの関連付け
+
+@Entity
+@Table(name = "telegram_test_result_dtl")
+@IdClass(value = TelegramTestResultDtlKey.class)
+@Setter
+@Getter
+@SuppressWarnings("serial")
+public class TelegramTestResultDtl extends BaseEntity implements Serializable {
+
+    public TelegramTestResultDtl() {
+        this.qgCtgy = "";
+    }
+
+    @Id
+    @Column(name = "qg_ctgy")
+    private String qgCtgy;
+
+    @Id
+    @Column(name = "test_scenario_id")
+    private String testScenarioId;
+
+    @Id
+    @Column(name = "telegram_id")
+    private String telegramId;
+
+    @Id
+    @Column(name = "exec_dt")
+    private String execDt;
+
+    @Id
+    @Column(name = "exec_time")
+    private String execTime;
+
+    @Id
+    @Column(name = "exec_seq")
+    private Integer execSeq;
+
+    @Column(name = "result_decs")
+    private String resultDecs;
+
+    @Column(name = "expcval_change_kbn")
+    private String expcvalChangeKbn;
+
+    @Column(name = "remarks")
+    private String remarks;
+
+    @NotFound(action = NotFoundAction.IGNORE)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumns({
+        @JoinColumn(name= "qg_ctgy", referencedColumnName = "qg_ctgy", insertable = false, updatable = false),
+        @JoinColumn(name = "test_scenario_id", referencedColumnName = "test_scenario_id", insertable = false, updatable = false),
+        @JoinColumn(name = "exec_seq", referencedColumnName = "exec_seq", insertable = false, updatable = false),
+        @JoinColumn(name = "telegram_id", referencedColumnName = "telegram_id", insertable = false, updatable = false) }
+    )
+    private TelegramTestDtl TelegramTestDtl;
+
+}
+------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+

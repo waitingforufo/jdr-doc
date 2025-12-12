@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>过渡练习</title>
+
+        <style>
+            *{
+                margin: 0px;
+                padding: 0px;
+            }
+
+            .box1{
+                width: 800px;
+                height: 800px;
+                background-color: silver;
+                overflow: hidden;
+            }
+
+            .box1 div{
+                width: 100px;
+                height: 100px;
+                margin-bottom: 100px;
+            }
+
+            .box2{
+                background-color: #bfa;
+
+                /*
+                * transition
+                *   - 属性が変化される場合の切替方式
+                *   - 動画が実現可能
+                */
+                /* transition-property: ; */
+                /* transition-duration: ; */
+                /* transition-delay: ; */
+
+                /* transition: height 2s; */
+                /* transition: all 2s;  */
+
+                /*全ては all*/
+                /* transition-property: width, height;*/
+                transition-property: all;
+                transition-duration: 2s;
+
+                /* transition-timing-function:
+                *   - 过渡的时序函数 指定过渡执行的方式
+                *   - def: ease 
+                 */
+                /* transition-timing-function: ease; */
+                transition-timing-function:ease;
+            }
+
+            /*
+            * .box1にマウスが入る時、 .box2の様式
+            */
+            .box1:hover .box2{
+                width: 200px;
+                height: 200px;
+                background-color: orange;
+            }
+        </style>
+    </head>
+    <body>
+
+        <div class="box1">
+            <div class="box2"></div>
+        </div>
+    </body>
+</html>
