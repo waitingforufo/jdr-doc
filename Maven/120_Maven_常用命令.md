@@ -1,4 +1,13 @@
 # Maven常用命令
+---------------------------------
+下载依赖，编译，安装到本地 .m2里：  
+  mvn clean install -U  
+
+  运行Spring Boot工程
+  mvn spring-boot:run  
+
+
+----------------------------------
 
 Maven 命令遵循以下模式：
 
@@ -158,7 +167,7 @@ mvn clean package -DskipTests
 清理项目，打包但不运行测试。
 
 ## 常见问题解决
-### 强制更新快照依赖
+### ※※※ 强制更新快照依赖 ※※※
 ```bash
 实例
 mvn clean install -U
