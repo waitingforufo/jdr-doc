@@ -163,6 +163,25 @@
 |  wget     | Invoke-WebRequest                  |
 |  wjb      | Wait-Job                           |
 
+# 常用命令
+ - get-process | sort-object CPU -Descending | Select-Object -First 5  
+ - get-childItem $env:windir -Filter *.exe | Measure-Object -Sum Length
+ - Import-CSV data.csv | where-object {$_.Age -gt 30} | ConvertTo-Html | Out-File output.html
 
+##### CMD不允许if嵌套，PS可以。
+```powershell
+$var1 = 1
+$var2 = 2
+
+if ($var1 -eq 1) {
+
+    Write-Output "First level condition met"
+
+    if ($var -eq 2) {
+        Write-Output "Second level conditiong met"
+    }
+
+}
+```
 
 
