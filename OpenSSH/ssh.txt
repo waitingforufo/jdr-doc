@@ -1,0 +1,8 @@
+Open SSH keyペア作成
+
+ssh-keygen -t rsa -C "dongri.jin@gientech.com" 
+
+
+
+id_rsa            私钥
+id_rsa.pub     公钥
