@@ -1,5 +1,35 @@
 # WinUI3 / C++/winRT
 
+## C++/WinRT开发WinUI 3应用程序时，常用的命名空间
+```C++
+C++/WinRT开发WinUI 3应用程序时，常用的命名空间包括：
+
+*   `winrt`:                         这是C++/WinRT的根命名空间，包含了WinRT类型和接口的定义，例如`winrt::hstring`、`winrt::IInspectable`等。
+*   `Windows::UI::Xaml`:             包含XAML相关的类型和接口。
+*   `Windows::UI::Xaml::Controls`:   包含WinUI 3控件的类型和接口，例如`Button`、`TextBox`等。
+*   `Windows::UI::Xaml::Media`:      包含XAML中使用的媒体类型和接口，例如`Brush`、`Image`等。
+*   `Windows::UI::Xaml::Navigation`: 包含XAML中使用的导航类型和接口，例如`Frame`、`Page`等。
+*   `Windows::UI::Xaml::Input`:      包含XAML中使用的输入类型和接口，例如`TextBox`、`Button`等。
+*   `Windows::UI::Core`:             包含WinUI 3核心类型和接口，例如`Application`、`Window`等。
+*   `winrt::Windows::Storage`:       包含存储类型和接口，例如`winrt::Windows::Storage::StorageFile`、`winrt::Windows::Storage::StorageFolder`等。
+*   `winrt::Windows::Networking`:    包含网络类型和接口，例如`winrt::Windows::Networking::Sockets::Socket`、`winrt::Windows::Networking::Connectivity::NetworkInterface`等。
+*   `winrt::Windows::Security`:      包含安全类型和接口，例如`winrt::Windows::Security::Credentials::PasswordCredential`、`winrt::Windows::Security::Authentication::AuthenticationBroker`等。
+
+不可以用的命名空间包括：
+
+*   `System`:                  这是WPF开发中使用的命名空间，不能直接在C++/WinRT中使用。
+*   `System.Windows`:          这是WPF开发中使用的命名空间，不能直接在C++/WinRT中使用。
+*   `System.Windows.Controls`: 这是WPF开发中使用的命名空间，不能直接在C++/WinRT中使用。
+*   `System.Windows.Media`:    这是WPF开发中使用的命名空间，不能直接在C++/WinRT中使用。
+*   `System.Windows.Input`:    这是WPF开发中使用的命名空间，不能直接在C++/WinRT中使用。
+
+注意：虽然不能直接使用WPF的命名空间，但在某些情况下，可以使用WPF的类型和接口，但需要使用`Windows::UI::Xaml::Interop`命名空间中的类型和接口来转换和使用。
+
+例如，  
+`System.Windows.Controls.Button`可以使用  
+`Windows::UI::Xaml::Interop::Button`类型来转换和使用。
+```
+
 # アプリ生成
 ## 1. xxx.vcproj
 ```xml
