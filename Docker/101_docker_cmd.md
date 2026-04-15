@@ -6,7 +6,7 @@ docker pull redmine:trixie
 # 运行redmine镜像文件
 #docker run -d --name JDR-redmine2 -p 3000:3000 -v ./data:/usr/src/redmine/files redmine:trixie
 
-docker run -d --name JDR-redmine2 -p 3000:3000 -v ./data/sqlite:/usr/src/redmine/sqlite redmine:trixie
+docker run -d --name JDR-redmine2 -p 3000:3000 -v ./redminedata/sqlite:/usr/src/redmine/sqlite redmine:trixie
 
 ```shell
 # -v ./data/sqlite:/usr/src/           数据卷挂载
