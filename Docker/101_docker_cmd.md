@@ -8,6 +8,9 @@ docker pull redmine:trixie
 
 docker run -d --name JDR-redmine2 -p 3000:3000 -v ./redminedata/sqlite:/usr/src/redmine/sqlite redmine:trixie
 
+# 挂载2个目录 （目前NG）
+docker run -d --name JDR-redmine2 -p 3000:3000 -v ./redminedata/sqlite:/usr/src/redmine/sqlite -v ./redminedata/plugins:/usr/src/redmine/plugins redmine:trixie
+
 ```shell
 # -v ./data/sqlite:/usr/src/           数据卷挂载
 #    主机目录      : 容器内目录
