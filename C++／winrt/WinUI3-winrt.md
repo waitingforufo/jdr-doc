@@ -1,6 +1,19 @@
 # WinUI3 / C++/winRT
+### Index
+[常用的命名空间](#cwinrt开发winui-3应用程序时常用的命名空间--sec1)  
+[生成应用程序](#アプリ生成-sec2)  
+[TextBlock](#textblock-sec3)  
+[メモリデータ　→　UI bind](#メモリデータui-sec4)  
+[debug文言出力 / hstring型生成→伝統文字列への変換](#debug文言出力--hstring型生成伝統文字列への変換-sec5)  
+[ラジオボタン](#ラジオボタン-sec6)  
+[Borderの色設定](#borderの色設定-solidcolorbrush--colors-sec7)  
+[テキストボックス　＆　ボタン](#テキストボックスボタン-sec8)  
+[コンテントダイヤログ(modal)](#コンテントダイヤログmodal-sec9)  
+[コンポボックス](#コンポボックス-sec10)  
+[MainWindow.idl](#mainwindowidl-sec11)  
 
-## C++/WinRT开发WinUI 3应用程序时，常用的命名空间
+
+## C++/WinRT开发WinUI 3应用程序时，常用的命名空间  {#sec1}
 ```C++
 C++/WinRT开发WinUI 3应用程序时，常用的命名空间包括：
 
@@ -30,7 +43,7 @@ C++/WinRT开发WinUI 3应用程序时，常用的命名空间包括：
 `Windows::UI::Xaml::Interop::Button`类型来转换和使用。
 ```
 
-# アプリ生成
+# アプリ生成 {#sec2}
 ## 1. xxx.vcproj
 ```xml
 <AppxPackage>false</AppxPackage>
@@ -39,13 +52,13 @@ C++/WinRT开发WinUI 3应用程序时，常用的命名空间包括：
 ## 2. Tools > NuGet Package Manager > Manage NuGet Packages for solution
 Updates配下のすべてを最新版に
 
-## 3. download Windows App SDK 1.6xxx
+## 3. download Windows App SDK 1.6xxx (Option)
 https://learn.microsoft.com/ja-jp/windows/apps/windows-app-sdk/downloads
 
 # Window type
 runtimeclass MainWindow : Microsoft.UI.Xaml.Window
 
-# TextBlock
+# TextBlock {#sec3}
 ```xml
 <TextBlock Text="{x:Bind MyProperty}" />
 ```
@@ -56,7 +69,12 @@ myButton().Content(box_value(L"Clicked"));
 ```
 ### *remember: XAML name is "colorPanel" -> ソース上では"colorPanel()"で取得する。 
 
-# メモリデータ　→　UI
+# メモリデータ　→　UI {#sec4}
+·xaml
+```xml
+<TextBlock Text="{x:Bind MyProperty}" />
+```
+
 ```C++
 void MainWindow::MyProperty(int32_t value)
 {
@@ -65,14 +83,14 @@ void MainWindow::MyProperty(int32_t value)
 }
 ```
 
-# debug文言出力 / hstring型生成→伝統文字列への変換
+# debug文言出力 / hstring型生成→伝統文字列への変換 {#sec5}
 ```C++
 OutputDebugString(L"Property value updated to: ");
 OutputDebugString(winrt::to_hstring(propertyValue).c_str());
 OutputDebugString(L"\r\n");
 ``` 
 
-# ラジオボタン
+# ラジオボタン {#sec6}
 # Border / RadioButton
 ```xml 
 <!-- Epsode2 -->
@@ -84,14 +102,14 @@ OutputDebugString(L"\r\n");
 </StackPanel>
 ```
 
-# Border の色設定 SolidColorBrush / Colors
+# Borderの色設定 SolidColorBrush / Colors {#sec7}
 ```C++ 
 colorPanel().Background(Microsoft::UI::Xaml::Media::SolidColorBrush{ Microsoft::UI::Colors::Yellow() });
 ```
 ### * SolidColorBrush - winrt::Microsoft::UI::Xaml::Media::SolidColorBrush
 ### * Colors - winrt::Microsoft::UI::Colors
 
-# テキストボックス　＆　ボタン
+# テキストボックス　＆　ボタン {#sec8}
 # TextBox / Button
 ```xml 
 <StackPanel Orientation="Vertical" Margin="20,0,0,0">
@@ -100,7 +118,7 @@ colorPanel().Background(Microsoft::UI::Xaml::Media::SolidColorBrush{ Microsoft::
 </StackPanel>
 ```
 
-# コンテントダイヤログ(modal)
+# コンテントダイヤログ(modal) {#sec9}
 ![コンテントダイヤログ](./img/epsode1/2024-11-18_124715.jpg)
 # dialog: Microsoft::UI::Xaml::Controls::ContentDialog
 
@@ -133,7 +151,7 @@ void MainWindow::sayHiButton_Click(winrt::Windows::Foundation::IInspectable cons
 
 ```
 
-# コンポボックス
+# コンポボックス {#sec10}
 ```xml
 <ComboBox x:Name="manualList" />
 ```
@@ -206,7 +224,7 @@ winrt::Windows::Foundation::Collections::IObservableVector<hstring> MainWindow::
 }
 
 ```
-### MainWindow.idl
+### MainWindow.idl {#sec11}
 ```C++ 
 namespace Epsode1
 {
