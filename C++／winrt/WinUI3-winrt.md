@@ -11,7 +11,15 @@
 [コンテントダイヤログ(modal)](#コンテントダイヤログmodal-sec9)  
 [コンポボックス](#コンポボックス-sec10)  
 [MainWindow.idl](#mainwindowidl-sec11)  
+  
+#### Win2D
+[Win2D安装](#win2d安装-sec201)  
+[xaml使用指定命名空间(Win2D CanvasControl的使用)](#xaml使用指定命名空间win2d-canvascontrol的使用sec202)  
+[Win2D Draw()画图方法](#win2d-draw画图方法-sec203)  
+  
 
+
+  
 
 ## C++/WinRT开发WinUI 3应用程序时，常用的命名空间  {#sec1}
 ```C++
@@ -237,6 +245,71 @@ namespace Epsode1
         // XAMLのx:Bindで指定するgetter関数（public)
         Windows.Foundation.Collections.IObservableVector<String> collection{ get; };
     }
+}
+```
+# Win2D
+## Win2D安装 {#sec201}
+用NuGet安装：  
+  
+Tools > NuGet Package Manager > Manage NuGet Package for Solution...  
+  
+Browse下选择 **Microsoft.Graphics.Win2D**  
+  
+它会在项目的packages目录下生成**Microsoft.Graphics.Win2D.1.4.0**目录。  
+                              |_ include / x86 / Microsoft.Graphics.Canvas.h  
+  
+## xaml使用指定命名空间(Win2D CanvasControl的使用){#sec202}  
+```xml
+<!-- xaml -->
+<Window
+    x:Class="JDRDemo.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:JDRDemo"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"                  <!-- 导入Win2D命名空间 -->
+    mc:Ignorable="d"
+    Title="JDRDemo">
+
+    <Grid>
+        <canvas:CanvasControl x:Name="canvas"                               <!-- 生成CanvasControl类实例： canvas -->
+                              ClearColor="CornflowerBlue"
+                              CreateResources="canvas_CreateResources"      <!-- CreateResources事件函数 -->
+                              Draw="canvas_Draw" />                         <!-- Draw事件函数(画图) -->
+    </Grid>
+</Window>
+```  
+  
+## Win2D Draw()画图方法 {#sec203}  
+```C++
+void winrt::JDRDemo::implementation::MainWindow::canvas_Draw(
+    winrt::Microsoft::Graphics::Canvas::UI::Xaml::CanvasControl const& sender, 
+    winrt::Microsoft::Graphics::Canvas::UI::Xaml::CanvasDrawEventArgs const& args)
+{
+    auto ds = args.DrawingSession();
+
+    // 绘制椭圆
+    ds.DrawEllipse(155, 115, 80, 30,
+        winrt::Microsoft::UI::Colors::Black(), 3);
+
+    // 绘制文本
+    ds.DrawText(L"Hello, Win2# World! 中文测试", 100, 100,
+        winrt::Microsoft::UI::Colors::Yellow());
+
+    // 绘制矩形
+    ds.DrawRectangle(50, 50, 200, 100,
+        winrt::Microsoft::UI::Colors::Red(), 2);
+
+    // 绘制线条
+    ds.DrawLine(10, 10, 300, 200,
+        winrt::Microsoft::UI::Colors::Green(), 2);
+
+    if (this->m_bitmap)
+    {
+        // 在指定位置绘制图片（左上角坐标 x=0, y=0)
+        ds.DrawImage(this->m_bitmap, 300, 300);
+    }//end if
 }
 ```
 
