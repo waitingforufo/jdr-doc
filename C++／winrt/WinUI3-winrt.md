@@ -4,6 +4,7 @@
 [c++/WinRT头文件包含清单速查表](#cwinrt头文件包含清单速查表--sec00)  
 [XAML核心知识](#xaml核心知识--sec01)  
 [XAML资源定义及使用](#xaml资源定义及使用-sec02)  
+[创建并显示新窗口](#创建并显示新窗口-sec021)  
 [怎么知道控件的某个属性是什么类型？](#怎么知道控件的某个属性是什么类型-sec03)  
 
   
@@ -357,6 +358,78 @@ namespace winrt::JDRDemo::implementation
 
 }
 ```  
+
+# 创建并显示新窗口 {#sec021}  
+  
+弹出一个新的独立窗体（Window）需要“添加XAML项”，“编写后台代码”，“在主页触发”三个步骤。  
+### 1. 添加新的Window项
+右键项目 -> 添加 -> 新建项 -> WinUI -> 空白窗口（Blank Window, WinUI 3)。  
+  
+```xml
+<!-- JDRSettings.xaml -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="JDRDemo.JDRSettings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:JDRDemo"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="JDRSettings">
+
+    <Grid>
+
+    </Grid>
+</Window>
+```  
+
+### 2. 编写后台代码
+```C++
+// MainWindow.xaml.cpp
+
+#include "JDRSettings.xaml.h"  // 引入新窗口的头文件
+
+void winrt::JDRDemo::implementation::MainWindow::OpenSettingsBtn_Click(winrt::Windows::Foundation::IInspectable const& sender, 
+                                                                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const& e)
+{
+    /* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    * 打开 非模态窗口（可以同时操作原窗口和新窗口）。 
+    */
+
+    // 1. 创建新窗口的实例
+    auto settingsWindow = winrt::make<JDRSettings>();
+
+    // 2. 绑定窗口的 Closed 事件
+    //auto mainWindow = App::MainWindow();
+    //if (mainWindow)
+    //{
+    //    auto appWindow = mainWindow.AppWindow();
+    //    appWindow.Show();
+    //    appWindow.MoveInZOrderAtTop();
+    //    mainWindow.Activate();
+    //}
+
+    // 3. 激活并显示窗口（必须）
+    settingsWindow.Activate();  // 进入激活状态(Z-Order不变）操作Z-Order使用 AppWindow#MoveInZOrderAtTop()
+
+    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    /*
+    *  进阶： 打开 模态窗口 （必须先关闭新窗口才能操作主窗口）
+    *  
+    *    ※WinUI3桌面应用目前没有 ShowDialog()方法。
+    *      通常的做法是使用 ContentDialog 替代新窗口， 或者如果必须使用独立窗口，可以通过禁用主窗口来模拟模态。
+    * 
+    *    注意： WinUI3桌面应用一般建议设置页使用 ContentDialog 或 NavigationView 侧边栏，而不是独立 Window。
+    * 
+    *    轻量级的页面，推荐做法是 不要使用独立Window， 而是将其作为一个 Page， 放在主窗口的 Frame中通过 Navigate 进行切换。
+    */
+    this->Close();  // 关闭主窗口（MainWindow)  返回时，重新 Activate()就可以回到主窗口
+}
+```  
+
 
 --------------------------------------------------------------------------------------------------------------  
 
