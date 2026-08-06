@@ -3,6 +3,9 @@
 [核心特性对比清单，将传统C++的痛点与C++11的改进进行直观对比](#核心特性对比清单将传统c的痛点与c11的改进进行直观对比-sec0)  
 [c++/WinRT头文件包含清单速查表](#cwinrt头文件包含清单速查表--sec00)  
 [XAML核心知识](#xaml核心知识--sec01)  
+[XAML资源定义及使用](#xaml资源定义及使用-sec02)  
+[怎么知道控件的某个属性是什么类型？](#怎么知道控件的某个属性是什么类型-sec03)  
+
   
 --------------------------------------------------------------------------------------------------------------  
 
@@ -180,7 +183,187 @@ XAML本身并不是用来执行复杂计算或逻辑判断的编程语言，而�
 通常使用Viasual Studio等IDE。  
 这些工具提供了可视化的XAML设计器，代码自动完成（Intellisense）以及实现预览功能，使得编写和调试XAML变得更加只管和高效。
 
---------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------  
+  
+# XAML资源定义及使用 {#sec02}  
+
+### 1. 外部资源文件 Styles/MyStyles.xaml
+```xml
+<!-- MyStyles.xaml -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:JDRDemo">
+
+    <!-- 资源定义集中在此文件里定义，然后在 app.xaml里引用，从而成为APP级别资源 -->
+
+    <x:Double x:Key="MarginFromMyStyles">32</x:Double>
+</ResourceDictionary>
+```  
+  
+### 2. 全局资源 App.xaml
+```xml
+<!-- App.xaml -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="JDRDemo.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:JDRDemo">
+    
+    <Application.Resources>
+        <ResourceDictionary>
+            
+            <!-- 合并系统默认控件资源（WinUI 3必须） -->
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <!-- Other merged dictionaries here -->
+                
+                <!-- 进阶技巧：合并外部资源字典
+                       当资源非常多时，建议将资源拆分到独立的XAML文件中（e.g. Styles/MyStyles.xaml)，
+                       然后在 App 或 Window 中通过 MergedDictionaries 引入，以保持代码整洁。
+                     
+                     ※资源查找优先级： 
+                         WinUI3会按照  当前控件 -> 父级控件 -> Window根容器 -> App.xaml 的顺序向上查找资源。
+                         如果同名资源在不同层级存在，距离当前控件最近的资源会优先生效。
+                -->
+                <!-- 引入自定义的外部资源 -->
+                <ResourceDictionary Source="ms-appx:///Styles/MyStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Other app resources here -->
+            
+            <!-- 自定义全局资源 -->
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#0078D4" />
+            <x:Double x:Key="StandardMargin">16</x:Double>
+        </ResourceDictionary>
+    </Application.Resources>
+    
+</Application>
+```  
+
+### 3. Window级别资源 - 定义在自己 xaml文件的根容器中
+```xml
+<!-- MainWindow.xaml -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="JDRDemo.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:JDRDemo"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    mc:Ignorable="d"
+    Title="JDRDemo">
+
+    <Grid x:Name="rootGrid">
+
+        <!-- 将资源放在 Window内部的根容器中 -->
+        <Grid.Resources>
+            <ResourceDictionary>
+                <SolidColorBrush x:Key="LocalAccentBrush" Color="#FF0000" />
+            </ResourceDictionary>
+        </Grid.Resources>
+        
+        <!-- 使用资源 -->
+        <!--
+          如何使用这些资源： 配置好资源后，可以通过以下方式在XAML中引用它们：
+          使用 ThemeResource
+            适用于需要 在运行时动态响应系统主题切换（如浅色/深色模式切换）的资源。
+            WinUI3强烈建议对 前景色，背景色等使用此标记扩展。
+        -->
+        <StackPanel Orientation="Vertical">
+            <!-- 使用app.xaml中定义的 StandardMargin -->
+            <Button Margin="{ThemeResource StandardMargin}" Content="My Button1" />
+            <Button Margin="{ThemeResource MarginFromMyStyles}" Content="My Button2" />
+            
+            <!-- 使用app.xaml中定义的 PrimaryBrush -->
+            <TextBlock Text="TextBlock1" Foreground="{ThemeResource PrimaryBrush}" />
+        
+            <!-- 使用本地定义的 LocalAccentBrush -->
+            <TextBlock Text="TextBlock2" Foreground="{ThemeResource LocalAccentBrush}" />
+
+            <Button x:Name="myBtn3" Content="My Button3"/>
+        </StackPanel>
+
+    </Grid>
+</Window>
+
+```  
+
+### 4. 在C++代码中获取资源（Window级别，App级别，外部资源文件）
+```C++
+// MainWindow.xaml.cpp
+
+namespace winrt::JDRDemo::implementation
+{
+    MainWindow::MainWindow()
+    {
+        InitializeComponent();  // 必须
+
+        // 获取资源
+        /*
+        * 1. 获取 Window 级别的资源
+        *    Window 级别的资源定义在根布局容器（如 Grid）中。要访问它们，需要先获取该容器的引用，然后调用 Resources().Lookup()方法。
+        */
+
+        // Grid在XAML中定义为 <Grid x:Name="rootGrid">
+        auto resourceDict = rootGrid().Resources();
+        auto value = resourceDict.Lookup(winrt::box_value(L"LocalAccentBrush"));      // 查找资源
+        auto brush = value.as<winrt::Microsoft::UI::Xaml::Media::SolidColorBrush>();  // 转换为期望的类型
+
+        myBtn3().Foreground(brush);  // 动态设置前景色
+
+        /*
+        * 2. 获取 App 级别（全局）的资源
+        *    App 级别的资源定义在 App.xaml 中。通过 Application::Current().Resources() 直接访问。
+        */
+        auto appResources = winrt::Microsoft::UI::Xaml::Application::Current().Resources();
+        auto stdMargin = appResources.Lookup(winrt::box_value(L"StandardMargin"));               // 查找全局资源
+
+        // 拆箱并转换为具体类型（如 x:Double)
+        // 注：不是double类型时会抛出异常。如果不确定资源是否存在或类型，建议使用更安全的 unbox_value_or
+        //     e.g.:
+        //       double margin = winrt::unbox_value_or<double>(stdMargin, 0.0);  // 如果转换失败，返回默认值 0.0
+        double margin = winrt::unbox_value<double>(stdMargin);
+
+        myBtn3().Content(winrt::box_value(margin));
+
+        /*
+        * ※关键注意事项
+        *   1. 处理键不存在的情况：
+        *        Lookup()方法在找不到指定的 Key 时，不会抛出异常， 而是返回一个空的 IInspectable。
+        *        如果直接对空值进行 as<> / unbox_value<> 会导致运行时崩溃。建议先检查返回值是否为空。
+        *
+        *        auto value = appResources.Lookup(winrt::box_value(L"SomeKey"));
+        *        if (value) {}
+        * 
+        *   2. 合并字典的查找：
+        *        如果资源是通过 MergedDictionaries 引入的，直接在主 ResourceDictionary 上调用 Lookup 依然可以正常找到它们。
+        *        WinUI3的运行时字典查找机制会自动遍历合并的字典。
+        * 
+        *   3. 运行时修改的局限性：
+        *        在运行时通过代码向 ResourceDictionary 中添加或修改的资源，不会 自动触发已经加载的XAML元素的UI更新。
+        *        XAML的资源解析 仅在 页面首次加载 或 主题切换时 发生。
+        * 
+        */
+
+    }
+
+}
+```  
+
+--------------------------------------------------------------------------------------------------------------  
+
+# 怎么知道控件的某个属性是什么类型？ {#sec03}  
+
+(用 winrt::Microsoft::UI::Xaml::Controls 检索)  
+https://learn.microsoft.com/ja-jp/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.button?view=windows-app-sdk-1.7
 
 ## C++/WinRT开发WinUI 3应用程序时，常用的命名空间  {#sec1}
 ```C++
@@ -321,7 +504,17 @@ winrt::fire_and_forget MainWindow::showMessage(hstring message)
 {
     Microsoft::UI::Xaml::Controls::ContentDialog dlg{};
 
+    /*
+    * 注意事项：
+    *   · 必须设置 XamlRoot： 在WinUI3桌面应用中，不设置XamlRoot会导致运行时异常。
+    *                       从 Page 中显示时用 this->XamlRoot(); 
+    *                       从Windows中显示时用 this->Content().XamlRoot()或给根元素命名后使用 rootPanel().XamlRoot()。
+    *   · 同一窗口只能打开一个 ContentDialog： 尝试同时打开两个会抛出异常。
+    *   · 确保至少有一个安全按钮： 如 “取消” 或 “关闭”，保证用户始终可以安全关闭对话框。
+    *   · ShowAsync() 返回 ContentDialogResult： 枚举值包括 Primary, Secondary, None（点击关闭按钮或按ESC） 
+    */
     dlg.XamlRoot(this->Content().XamlRoot());  // 現在WindowのContent Root
+
     dlg.Title(box_value(L"Greetings"));        // box_value(): c string to IInspectable type
     dlg.Content(box_value(message));
     dlg.CloseButtonText(L"Close");
