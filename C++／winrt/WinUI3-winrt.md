@@ -5,8 +5,9 @@
 [XAML核心知识](#xaml核心知识--sec01)  
 [XAML资源定义及使用](#xaml资源定义及使用-sec02)  
 [创建并显示新窗口](#创建并显示新窗口-sec021)  
+[全局共通类](#全局共通类-sec022)  
+[全局共同类JDRCommon完美支持XAML数据绑定{x:Bind}](#全局共同类jdrcommon完美支持xaml数据绑定xbind-sec023)  
 [怎么知道控件的某个属性是什么类型？](#怎么知道控件的某个属性是什么类型-sec03)  
-
   
 --------------------------------------------------------------------------------------------------------------  
 
@@ -389,6 +390,7 @@ namespace winrt::JDRDemo::implementation
 ```C++
 // MainWindow.xaml.cpp
 
+#include "App.xaml.h"          // App.xaml中的App类的头文件
 #include "JDRSettings.xaml.h"  // 引入新窗口的头文件
 
 void winrt::JDRDemo::implementation::MainWindow::OpenSettingsBtn_Click(winrt::Windows::Foundation::IInspectable const& sender, 
@@ -410,6 +412,26 @@ void winrt::JDRDemo::implementation::MainWindow::OpenSettingsBtn_Click(winrt::Wi
     //    appWindow.MoveInZOrderAtTop();
     //    mainWindow.Activate();
     //}
+    settingsWindow.Closed([this](auto&&, winrt::Microsoft::UI::Xaml::WindowEventArgs const&)
+    {
+        // 子窗口关闭时，重新激活主窗口
+        // 假设在 App类中定义了 m_window;
+
+        // C++/WinRT中，访问 App 类中定义的成员，
+        // 最标准且安全的方式是通过 Application::Current() 获取当前应用实例，
+        // 然后向下转型（Cast）到 App.xaml里的 App 实现类。
+        auto curApp = winrt::Microsoft::UI::Xaml::Application::Current();
+        
+        // 向下转型到 winrt::JDRDemo::implementation::App 类实例
+        auto pApp = curApp.as<winrt::JDRDemo::implementation::App>();
+
+        winrt::Microsoft::UI::Xaml::Window m_mainWindow = pApp->m_mainWindow;
+        if (m_mainWindow)
+        {
+            m_mainWindow.Activate();
+        }//end if
+
+    });
 
     // 3. 激活并显示窗口（必须）
     settingsWindow.Activate();  // 进入激活状态(Z-Order不变）操作Z-Order使用 AppWindow#MoveInZOrderAtTop()
@@ -430,8 +452,503 @@ void winrt::JDRDemo::implementation::MainWindow::OpenSettingsBtn_Click(winrt::Wi
 }
 ```  
 
+--------------------------------------------------------------------------------------------------------------
+# 全局共通类 {#sec022}
+## 纯C++单例  
+#### 1. 生成 JDRCommon.h, JDRCommon.cpp  
+```C++
+// JDRCommon.h
+#pragma once
 
---------------------------------------------------------------------------------------------------------------  
+/*
+* 实现 全局共同类 最标准的方式时  单例模式
+*
+* 1. 定义 JDRCommon单例类
+*
+* 2. 在应用程序初始化时触发实例化（可选，但推荐）
+*    虽然 getInstance() 是懒加载的（第一次调用时才创建），但如果你希望在应用启动时就立即初始化它（例如在初始化时读取配置文件），
+*    可以在 App.xaml.cpp 的 OnLaunched 中主动调用一次。
+*
+*      auto* pCommon = JDRCommon::getInstance();
+*      pCommon->SetGlobalSetting(100); // 示例：初始化一些全局配置
+*
+* 3. 在任何窗口代码中轻松获取
+*    无论是 MainWindow, JDRSettings 还是任何深层的 ViewModel中，都可以随时随地获取这个全局实例。
+*    //一行代码轻松获取全局实例指针
+*    JDRCommon * pCommon = JDRCommon::getInstance();
+*
+*    // 使用全局数据
+*    int currentSetting = pCommon->GetGlobalSetting();
+*
+*    // 修改全局数据
+*    pCommon->SetGlobalSetting(currentSetting + 1);
+*
+*/
+
+class JDRCommon
+{
+public:
+	// 禁止拷贝和赋值
+	JDRCommon(const JDRCommon&) = delete;
+	JDRCommon& operator=(const JDRCommon&) = delete;
+
+	// 全局获取实例的静态方法
+	static JDRCommon* getInstance();
+
+	// 示例： 可以在这里定义任何全局需要的成员或方法
+	int GetGlobalSetting() const { return m_globalSetting; }
+	void setGlobalSetting(int value) { m_globalSetting = value; }
+
+private:
+	// 私有构造函数，防止外部直接实例化
+	JDRCommon() = default;
+
+	int m_globalSetting = 0;
+};
+
+// ************************************************
+// JDRCommon.cpp
+
+#include "pch.h"
+#include "JDRCommon.h"
+
+JDRCommon* JDRCommon::getInstance()
+{
+	// 使用 C++11的 Magic statics保证线程安全的懒汉式单例
+	// 首次调用时自动实例化，应用退出时自动销毁
+	static JDRCommon instance;
+	return &instance;
+}
+
+```  
+
+#### 2. 在应用程序初始化时触发实例化（可选但推荐）
+虽然 getInstance() 是懒加载的（第一次调用时才创建），但如果你希望在应用启动时就立即初始化它（例如在初始化时读取配置文件），可以在 App.xaml.cpp 的 OnLaunched 中主动调用一次。  
+
+```c++
+// App.xaml.cpp
+
+#include "JDRCommon.h"
+
+namespace winrt::JDRDemo::implementation
+{
+    /// <summary>
+    /// Initializes the singleton application object.  This is the first line of authored code
+    /// executed, and as such is the logical equivalent of main() or WinMain().
+    /// </summary>
+    App::App()
+    {
+      ...
+    }
+
+    void App::OnLaunched([[maybe_unused]] LaunchActivatedEventArgs const& e)
+    {
+        /*
+        * JDRCommon的 getInstance()是懒加载（第一次调用时才创建），但如果希望在应用启动时就立即初始化它（例如在初始化时读取配置文件），
+        * 可以在 App.xaml.cpp#OnLaunched() 中主动调用一次。
+        */
+        // 应用启动时，主动获取一次示例，完成全局初始化
+        auto* pCommon = JDRCommon::getInstance();
+        pCommon->setGlobalSetting(100);
+
+
+        m_mainWindow = make<MainWindow>();
+        m_mainWindow.Activate();
+    }
+}
+```  
+
+#### 3. 在任何窗口代码中轻松获取
+现在，无论是 MainWindow、JDRSettings 还是任何深层的 ViewModel 中，你都可以随时随地获取这个全局实例。  
+
+```c++
+
+#include "JDRCommon.h"
+
+JDRCommon* pCommon = JDRCommon::getInstance();
+
+int currentSetting = pCommon->GetGlobalSetting();
+pCommon->SetGlobalSetting(currentSetting + 1);
+
+```  
+
+## JDRCommon支持XAML数据绑定
+ 进阶方案：如果 JDRCommon 需要支持 XAML 数据绑定
+上面的方案是纯 C++ 单例。如果你希望 JDRCommon 里的数据能直接在 XAML 中通过 {x:Bind} 绑定，并且支持 UI 自动刷新，你需要让它继承 WinRT 的 INotifyPropertyChanged。
+修改 JDRCommon.h 支持绑定：
+cpp
+
+编辑
+
+
+```c++
+#pragma once
+#include <winrt/Windows.UI.Xaml.Data.h>
+
+class JDRCommon : public winrt::implements<JDRCommon, winrt::Windows::UI::Xaml::Data::INotifyPropertyChanged>
+{
+public:
+    static winrt::com_ptr<JDRCommon> getInstance();
+
+    // 绑定属性
+    winrt::hstring AppTitle() const { return m_appTitle; }
+    void AppTitle(winrt::hstring const& value)
+    {
+        if (m_appTitle != value)
+        {
+            m_appTitle = value;
+            RaisePropertyChanged(L"AppTitle");
+        }
+    }
+
+    // INotifyPropertyChanged 实现
+    winrt::event_token PropertyChanged(winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
+    {
+        return m_propertyChanged.add(handler);
+    }
+    void PropertyChanged(winrt::event_token const& token) noexcept
+    {
+        m_propertyChanged.remove(token);
+    }
+
+private:
+    JDRCommon() = default;
+    void RaisePropertyChanged(std::wstring_view propertyName)
+    {
+        m_propertyChanged(*this, winrt::Windows::UI::Xaml::Data::PropertyChangedEventArgs(propertyName));
+    }
+
+    winrt::hstring m_appTitle{ L"JDR Demo Application" };
+    winrt::event<winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
+};
+```  
+
+修改 JDRCommon.cpp：
+```c++
+
+#include "pch.h"
+#include "JDRCommon.h"
+
+winrt::com_ptr<JDRCommon> JDRCommon::getInstance()
+{
+    static auto instance = winrt::make_self<JDRCommon>();
+    return instance;
+}
+```  
+
+在 XAML 中绑定全局数据：  
+```xml
+
+<TextBlock Text="{x:Bind local:JDRCommon.getInstance().AppTitle, Mode=OneWay}" />
+采用这种 winrt::com_ptr 结合 make_self 的方式，不仅能在 C++ 代码中全局访问，还能完美融入 WinUI 3 的数据绑定生态，是 C++/WinRT 架构中最推荐的全局状态管理方式。
+需要我把前面讨论的所有功能整合成一个完整的示例项目结构吗？包括 ContentDialog、资源访问、ViewModel 绑定、多窗口切换和 JDRCommon 单例。
+
+<TextBlock Text="{x:Bind local:JDRCommon.getInstance().AppTitle, Mode=OneWay}" />
+```  
+
+发生错误。找不到local:JDRCommon  
+
+
+这个错误是因为在 XAML 中使用 {x:Bind} 绑定静态方法时，XAML 编译器无法直接识别普通的 C++ 类，它需要将其作为 WinRT 运行时类（Runtime Class）来解析。  
+
+要解决这个问题，你需要将 JDRCommon 声明为 WinRT 运行时类，并在 XAML 中正确引用。  
+
+以下是完整的修复步骤：  
+
+第一步：将 JDRCommon 定义为 WinRT 运行时类你需要通过 IDL 文件来声明它。  
+
+1. 添加 JDRCommon.idl  
+在项目中添加一个 Midl File (.idl)，命名为 JDRCommon.idl，内容如下：  
+```c++
+namespace JDRDemo
+{
+    // 声明为静态类，并实现 INotifyPropertyChanged 以支持绑定
+    [bindable]
+    [static]
+    runtimeclass JDRCommon : [default] Windows.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        static String AppTitle{ get; };
+    }
+}
+```  
+
+
+2. 修改 JDRCommon.h  
+```c++
+#pragma once
+#include "JDRCommon.g.h"
+
+namespace winrt::JDRDemo::implementation
+{
+    struct JDRCommon : JDRCommonT<JDRCommon>
+    {
+        // 实现静态属性
+        static winrt::hstring AppTitle();
+
+        // INotifyPropertyChanged 实现
+        static winrt::event_token PropertyChanged(winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
+        static void PropertyChanged(winrt::event_token const& token) noexcept;
+
+    private:
+        static winrt::event<winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
+        static winrt::hstring m_appTitle;
+    };
+}
+```  
+
+
+3. 修改 JDRCommon.cpp  
+```c++
+
+#include "pch.h"
+#include "JDRCommon.h"
+#include "JDRCommon.g.cpp"
+
+namespace winrt::JDRDemo::implementation
+{
+    winrt::event<winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler> JDRCommon::m_propertyChanged;
+    winrt::hstring JDRCommon::m_appTitle{ L"JDR Demo Application" };
+
+    winrt::hstring JDRCommon::AppTitle()
+    {
+        return m_appTitle;
+    }
+
+    winrt::event_token JDRCommon::PropertyChanged(winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
+    {
+        return m_propertyChanged.add(handler);
+    }
+
+    void JDRCommon::PropertyChanged(winrt::event_token const& token) noexcept
+    {
+        m_propertyChanged.remove(token);
+    }
+}
+```  
+
+
+第二步：在 XAML 中正确绑定  
+确保在你的 XAML 文件（如 MainWindow.xaml）的根元素中声明了 local 命名空间，并且命名空间与 IDL 中定义的一致。
+```xml
+
+<Window
+    x:Class="JDRDemo.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:JDRDemo"> <!-- 确保这行存在且命名空间正确 -->
+
+    <Grid>
+        <!-- 绑定静态类的静态属性 -->
+        <TextBlock Text="{x:Bind local:JDRCommon.AppTitle, Mode=OneWay}" />
+    </Grid>
+</Window>
+```  
+
+💡 关键注意点  
+
+  - 不需要调用 getInstance()：  
+    在 IDL 中声明为 [static] runtimeclass 后，XAML 编译器会自动将其视为静态类。你直接使用 local:JDRCommon.AppTitle 即可，不需要（也不能）在 XAML 中调用 getInstance()。  
+
+  - 生成文件：  
+    添加 IDL 文件后，必须先编译一次项目（Build），让 midl.exe 和 cppwinrt.exe 生成对应的 .g.h 和 .g.cpp 文件，然后 XAML 编译器才能识别 local:JDRCommon。  
+
+  - 命名空间匹配：  
+    IDL 中的 namespace JDRDemo 必须与 XAML 中 xmlns:local="using:JDRDemo" 完全一致。  
+
+  按照上述步骤重构后，找不到 local:JDRCommon 的错误就会消失，并且 AppTitle 的变化也能实时反映到 UI 上。  
+
+
+-------------------------------------------------------------------------------------------------------------- 
+# 全局共同类JDRCommon完美支持XAML数据绑定{x:Bind} {#sec023}  
+在C++/WinRT中，要实现一个全局共同类并完美支持 XAML 数据绑定（{x:Bind})，最标准的做法是将其定义为 **单例模式的WinRT运行时类（Runtime Class）。**  
+
+### 1. 第一步： 定义 IDL 文件
+在项目中添加一个 Midl File(.idl)，命名为 JDRCommon.idl。  
+注意必须加上 [bindable]特性以支持数据绑定。  
+```c++
+// JDRCommon.idl
+
+// 后台C++代码 与 前台XAML 之间的桥梁。 IDL文件里声明的函数，成员才可以在XAML中使用
+namespace JDRDemo
+{
+  [bindable]
+  runtimeclass JDRCommon : [default] Windows.UI.Xaml.Data.INotifyPropertyChanged
+  {
+    // 构造函数（C++/WinRT 2.0统一构造需要） XAML里绑定时可以使用此函数
+    JDRCommon();
+
+    // 支持绑定的属性
+    String AppTitle { get; set; };
+    Int32 GlobalSetting { get; set; };
+  }
+}
+```  
+
+### 2. 第二步： 实现头文件 - JDRCommon.h  
+```C++
+// JDRCommon.h
+
+#pragma once
+#include "JDRCommon.g.h"
+
+namespace winrt::JDRDemo::implementation
+{
+  struct JDRCommon : JDRCommonT<JDRCommon>
+  {
+    JDRCommon() = default;
+
+    // 属性的 getter/setter
+    winrt::hstring AppTitle();
+    void AppTitle(winrt::hstring const& value);
+
+    int32_t GlobalSetting();
+    void GlobalSetting(int32_t value);
+
+    // 获取全局单例的静态方法（供 C++代码调用）
+    static winrt::JDRDemo::JDRCommon GetInstance();
+
+    // INotifyPropertyChanged 接口实现
+        winrt::event_token PropertyChanged(winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
+        void PropertyChanged(winrt::event_token const& token) noexcept;
+
+    private:
+        winrt::hstring m_appTitle{ L"JDR Demo Application" };
+        int32_t m_globalSetting{ 0 };
+        winrt::event<winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
+
+        // 内部触发通知的辅助方法
+        void RaisePropertyChanged(std::wstring_view propertyName);
+  }
+}
+
+```  
+
+### 3. 第三步： 实现 CPP文件 - JDRCommon.cpp  
+```C++
+// JDRCommon.cpp
+
+#include "pch.h"
+#include "JDRCommon.h"
+#include "JDRCommon.g.cpp"
+
+namespace winrt::JDRDemo::implementation
+{
+  winrt::hstring JDRDemo::AppTitle()
+  {
+    return m_appTitle;
+  }
+
+  void JDRCommon::AppTitle(winrt::hstring const& value)
+  {
+    if (m_appTitle != value)
+    {
+      m_appTitle = value;
+      RaisePropertyChanged(L"AppTitle");
+    }
+  }
+
+  int32_t JDRCommon::GlobalSetting()
+  {
+    return m_globalSetting;
+  }
+
+  void JDRCommon::GlobalSetting(int32_t value)
+  {
+    if (m_globalSetting != value)
+    {
+      m_globalSetting = value;
+      RaisePropertyChanged(L"GlobalSetting");
+    }
+  }
+
+  // 核心： 单例模式实现
+  winrt::JDRDemo::JDRCommon JDRCommon::GetInstance()
+  {
+    static winrt::JDRDemo::JDRCommon instance = winrt::make<JDRCommon>();
+    return instance;
+  }
+
+  // INotifyPropertyChanged 实现
+  winrt::event_token JDRCommon::PropertyChanged
+    winrt::Windows::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
+  {
+    return m_propertyChanged.add(handler);
+  }
+
+  void JDRCommon::PropertyChanged(winrt::event_token const& token) noexcept
+  {
+    m_propertyChanged.remove(token);
+  }
+
+  void JDRCommon::RaisePropertyChanged(std::wstring_view propertyName)
+  {
+    m_propertyChanged(
+      *this
+      , winrt::Windows::UI::Xaml::Data::PropertyChangedEventArgs(propertyName));
+  }
+
+}
+
+```  
+
+### 4. 第四步： 在XAML中绑定
+在 MainWindow.xaml 中， 通过 {x:Bind} 调用静态方法 GetInstance()来获取实例并绑定属性。  
+记得加上 Mode=OneWay 以支持 UI自动刷新。  
+
+```xml
+
+<Window
+    x:class="JDRDemo.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:JDRDemo">
+
+    <StackPanel Spacing="16" Margin="20">
+        <!-- 绑定单例的属性 -->
+        <TextBlock Text="{x:Bind local:JDRCommon.GetInstance().AppTitle, Mode=OneWay}"
+                   FontSize="24" FontWeight="Bold" />
+
+        <TextBlock Text="{x:Bind local:JDRCommon.GetInstance().GlobalSetting, Mode=OneWay}" />
+
+        <!-- 测试按钮：点击修改全局单例的值， UI会自动刷新 -->
+        <Button Content="修改全局标题" Click="ChangeTitle_Click" />
+    </StackPanel>
+
+</Window>
+```  
+
+### 5. 第五步： 在C++代码中修改数据  
+在 MainWindow.xaml.cpp 中， 可以在任何地方通过 JDRCommon.GetInstance()获取该单例，修改其属性后，XAML界面会自动响应更新。  
+```C++
+// MainWindow.xaml.cpp
+
+#include "MainWindow.xaml.h"
+#include "JDRCommon.h"
+
+namespace winrt::JDRDemo::implementation
+{
+
+    void MainWindow::ChangeTitle_Click(winrt::Windows::Foundation::IInspectable const&, 
+                                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+      // 1.获取全局单例
+      auto common = JDRCommon::GetInstance();
+
+      // 2.修改属性（会自动触发 PropertyChanged, XAML自动刷新）
+      common.AppTitle(L"标题已被 C++ 代码修改！");
+      common.GlobalSetting(common.GlobalSetting() + 1);
+    }
+}
+```  
+
+### ※关键点总结：  
+  1. **[bindable]特性：** 在IDL中必须加上，这是 C++/WinRT对象能被XAML绑定的前提。  
+  2. **INotifyPropertyChanged：** 必须在 IDL 和 C++中完整实现， 否则UI无法感知数据变化。  
+  3. **Mode=OneWay：** XAML中绑定动态变化的属性时，必须指定 Mode=OneWay， 默认的 OneTime 不会响应后续更改。  
+  4. **统一构造：** 在IDL中声明 JDRCommon() 构造函数， 配合C++中的 winrt::make<JDRCommon>()， 这是C++/WinRT 2.0推荐的实例化方式。  
+   
+
+
 
 # 怎么知道控件的某个属性是什么类型？ {#sec03}  
 
